@@ -53,13 +53,18 @@ class Checksum < Sensu::Plugin::Check::CLI
       unknown 'We have nothing to compare this file with.'
     end
 
-    hash = config[:hash] || Digest::SHA2.file(files.first).hexdigest
+    hashfile = config[:hash] || Digest::SHA2.file(files.first).hexdigest
+
+    # Added this part to allow reading a hash from a premade file
+    # i.e. sha256sum filename | awk '{print $1}' > filename.sha256sum
+    hash = IO.read(hashfile).chomp
 
     errors = []
 
     files.each do |file|
       if File.exist?(file)
-        file_hash = Digest::SHA2.file(file).hexdigest
+        # Added .chomp to make sure newlines don't get in the way of comparisons
+        file_hash = Digest::SHA2.file(file).hexdigest.chomp
         errors << "#{file} does not match" if file_hash != hash
       else
         errors << "#{file} does not exist"
